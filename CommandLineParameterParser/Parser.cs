@@ -26,7 +26,29 @@ namespace CommandLineParameterParser
         /// </summary>
         public void DisplayHelp()
         {
-
+            this.Out.WriteLine("Available flags:");
+            this.Out.WriteLine("\thelp\tDisplays this help text");
+            this.Out.WriteLine("\t?\tDisplays this help text");
+            foreach (var cmd in this.CmdList)
+            {
+                if (cmd.Kind != Command.EKind.Flag)
+                    continue;
+                this.Out.WriteLine(string.Concat('\t', cmd.Name, '\t', cmd.Description));
+            }
+            this.Out.WriteLine("Available Properties:");
+            foreach (var cmd in this.CmdList)
+            {
+                if (cmd.Kind != Command.EKind.Property)
+                    continue;
+                if(string.IsNullOrWhiteSpace(cmd.DefaultValue))
+                {
+                    this.Out.WriteLine(string.Concat('\t', cmd.Name, '\t', cmd.Description));
+                }
+                else
+                {
+                    this.Out.WriteLine(string.Concat('\t', cmd.Name, "(=", cmd.DefaultValue, ')', '\t', cmd.Description));
+                }
+            }
         }
 
         /// <summary>
@@ -50,6 +72,7 @@ namespace CommandLineParameterParser
                 if (string.IsNullOrWhiteSpace(arg))
                     continue;
                 char firstChar = arg[0];
+                bool hadHit = false;
                 foreach (var cmd in this.CmdList)
                 {
                     switch (cmd.Kind)
@@ -61,6 +84,7 @@ namespace CommandLineParameterParser
                                 if(arg.Substring(1).Equals(cmd.Name))
                                 {
                                     cmd.Action(this.Out, string.Empty);
+                                    hadHit = true;
                                 }
                             }
                             break;
@@ -69,6 +93,7 @@ namespace CommandLineParameterParser
                                 if (firstChar == '-' || firstChar == '/')
                                     continue;
                                 cmd.Action(this.Out, arg);
+                                hadHit = true;
                             }
                             break;
                         case Command.EKind.Property:
@@ -83,16 +108,26 @@ namespace CommandLineParameterParser
                                         PropertyCommands.Remove(cmd);
                                     }
                                     cmd.Action(this.Out, enumerator.Current as string);
+                                    hadHit = true;
                                 }
                             }
                             break;
                         default: throw new NotImplementedException();
                     }
+                    if (hadHit)
+                        break;
                 }
-                foreach(var cmd in PropertyCommands)
+                if(!hadHit)
                 {
-                    cmd.Action(this.Out, cmd.DefaultValue);
+                    if(arg.Substring(1).Equals("help") || arg.Substring(1).Equals("?"))
+                    {
+                        this.DisplayHelp();
+                    }
                 }
+            }
+            foreach (var cmd in PropertyCommands)
+            {
+                cmd.Action(this.Out, cmd.DefaultValue);
             }
         }
     }
